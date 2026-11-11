@@ -58,3 +58,6 @@
   .orbit-info #finished-box{grid-column:2;grid-row:3}
 }
 @media(max-width:380px){.orbit-info #waiting-box,.orbit-info #ready-box,.orbit-info #blocked-box,.orbit-info #finished-box{grid-column:1;grid-row:auto}}
+
+/* Espacio superior para el retorno desde bloqueados. */
+@media(min-width:701px){.orbit-layout{padding-top:30px}}

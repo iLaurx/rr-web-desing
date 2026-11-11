@@ -27,25 +27,77 @@ const flowRoutes = {
   complete: ['cpu-box', 'finished-box', '#75ef91']
 };
 const svgNS = 'http://www.w3.org/2000/svg';
-function routePath(fromId, toId) {
+function routePath(name) {
   const bounds = flowSvg.getBoundingClientRect();
-  const from = $(fromId).getBoundingClientRect();
-  const to = $(toId).getBoundingClientRect();
-  const a = { x: from.left + from.width / 2 - bounds.left, y: from.top + from.height / 2 - bounds.top };
-  const b = { x: to.left + to.width / 2 - bounds.left, y: to.top + to.height / 2 - bounds.top };
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const edge = (rect, x, y) => Math.min(rect.width / 2 / (Math.abs(x) || 0.001), rect.height / 2 / (Math.abs(y) || 0.001));
-  const start = edge(from, dx, dy), end = edge(to, dx, dy);
-  return `M ${a.x + dx * start} ${a.y + dy * start} L ${b.x - dx * end} ${b.y - dy * end}`;
+  const rect = id => {
+    const r = $(id).getBoundingClientRect();
+    return { left: r.left - bounds.left, right: r.right - bounds.left,
+      top: r.top - bounds.top, bottom: r.bottom - bounds.top,
+      cx: r.left + r.width / 2 - bounds.left, cy: r.top + r.height / 2 - bounds.top,
+      height: r.height };
+  };
+  const waiting = rect('waiting-box'), ready = rect('ready-box');
+  const cpu = rect('cpu-box'), blocked = rect('blocked-box'), finished = rect('finished-box');
+  const points = (coords) => coords.map(([x, y], i) => `${i ? 'L' : 'M'} ${x} ${y}`).join(' ');
+  // Las patitas se dibujan cada 19 px desde el 12 % de la altura del chip.
+  const pin = (targetY) => {
+    const first = cpu.top + cpu.height * 0.12 + 2.5;
+    const max = Math.max(0, Math.floor((cpu.height * 0.76 - 5) / 19));
+    return first + Math.max(0, Math.min(max, Math.round((targetY - first) / 19))) * 19;
+  };
+  if (window.matchMedia('(min-width: 701px)').matches) {
+    if (name === 'ready') return points([[waiting.cx, waiting.bottom], [ready.cx, ready.top]]);
+    if (name === 'unblocked') {
+      const top = Math.min(waiting.top, blocked.top) - 20;
+      return points([[blocked.cx, blocked.top], [blocked.cx, top], [waiting.cx, top], [waiting.cx, waiting.top]]);
+    }
+    const right = name === 'blocked' || name === 'complete';
+    const target = name === 'dispatch' ? ready : name === 'quantumExpired' ? waiting : name === 'blocked' ? blocked : finished;
+    const x1 = right ? cpu.right + 12 : cpu.left - 12;
+    const x2 = right ? target.left : target.right;
+    const y1 = pin(target.cy), mid = (x1 + x2) / 2;
+    const path = [[x1, y1], [mid, y1], [mid, target.cy], [x2, target.cy]];
+    if (name === 'dispatch') path.reverse();
+    return points(path);
+  }
+  // En pantallas estrechas las tarjetas cambian de posición: se conectan por
+  // los centros de sus bordes con tramos horizontales y verticales.
+  const [fromId, toId] = flowRoutes[name];
+  const from = rect(fromId), to = rect(toId);
+  const dx = to.cx - from.cx, dy = to.cy - from.cy;
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    const y1 = dy >= 0 ? from.bottom : from.top;
+    const y2 = dy >= 0 ? to.top : to.bottom;
+    const mid = (y1 + y2) / 2;
+    return points([[from.cx, y1], [from.cx, mid], [to.cx, mid], [to.cx, y2]]);
+  }
+  const x1 = dx >= 0 ? from.right : from.left;
+  const x2 = dx >= 0 ? to.left : to.right;
+  const mid = (x1 + x2) / 2;
+  return points([[x1, from.cy], [mid, from.cy], [mid, to.cy], [x2, to.cy]]);
 }
 function drawFlows() {
   flowSvg.replaceChildren();
+  const defs = document.createElementNS(svgNS, 'defs');
+  for (const [name, [, , color]] of Object.entries(flowRoutes)) {
+    const marker = document.createElementNS(svgNS, 'marker');
+    marker.id = `arrow-${name}`;
+    marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '9'); marker.setAttribute('refY', '5');
+    marker.setAttribute('markerWidth', '6'); marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('orient', 'auto');
+    const arrow = document.createElementNS(svgNS, 'path');
+    arrow.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+    arrow.setAttribute('fill', color); marker.append(arrow); defs.append(marker);
+  }
+  flowSvg.append(defs);
   for (const [name, [from, to, color]] of Object.entries(flowRoutes)) {
     const path = document.createElementNS(svgNS, 'path');
-    path.setAttribute('d', routePath(from, to));
+    path.setAttribute('d', routePath(name));
     path.setAttribute('class', 'flow-track');
     path.style.setProperty('--flow-color', color);
     path.dataset.route = name;
+    path.setAttribute('marker-end', `url(#arrow-${name})`);
     flowSvg.append(path);
   }
 }
@@ -55,7 +107,7 @@ function animateEvents(events) {
     const route = flowRoutes[event.type];
     if (!route) continue;
     const path = document.createElementNS(svgNS, 'path');
-    path.setAttribute('d', routePath(route[0], route[1]));
+    path.setAttribute('d', routePath(event.type));
     path.setAttribute('class', 'flow-pulse');
     path.style.setProperty('--flow-color', route[2]);
     flowSvg.append(path);
@@ -100,8 +152,19 @@ function render() {
   $('time').textContent = String(state.time).padStart(2, '0');
   $('cpu').textContent = state.running ?? '...';
   $('cpu').setAttribute('aria-label', state.running ? `En ejecución: ${state.running}` : 'CPU en espera');
-  $('quantum').textContent = `Quantum: ${state.sliceUsed} / ${state.quantum} s`;
-  document.querySelectorAll('.cpu-meter i').forEach((segment, index) => segment.classList.toggle('active', index < state.sliceUsed));
+  // Conserva el último intervalo visible hasta el siguiente segundo, aunque
+  // el motor ya haya finalizado o reencolado el proceso en esa frontera.
+  let displayedSlice = state.sliceUsed;
+  if (!state.running) {
+    const boundary = [...state.events].reverse().find(event =>
+      ['dispatch', 'complete', 'quantumExpired', 'blocked', 'idle'].includes(event.type));
+    if (boundary && boundary.time === state.time && ['complete', 'quantumExpired'].includes(boundary.type)) {
+      const dispatchIndex = state.events.length - 1 - [...state.events].reverse().findIndex(event => event.type === 'dispatch' && event.taskId === boundary.taskId);
+      displayedSlice = state.events.slice(dispatchIndex + 1).filter(event => event.type === 'execute' && event.taskId === boundary.taskId).length;
+    }
+  }
+  $('quantum').textContent = `Quantum: ${displayedSlice} / ${state.quantum} s`;
+  document.querySelectorAll('.cpu-meter i').forEach((segment, index) => segment.classList.toggle('active', index < displayedSlice));
   $('status').textContent = state.done && tasks.length ? 'Simulación terminada' : timer !== null ? 'En ejecución' : started ? 'En pausa' : 'Lista para iniciar';
   const lastTick = [...state.events].reverse().find(e => e.type === 'execute' || e.type === 'idle');
   $('last-action').textContent = lastTick ? describe(lastTick) + '.' : 'Agrega tareas e inicia la simulación.';
