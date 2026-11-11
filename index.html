@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Round Robin | Simulador</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+<header class="top"><div><p class="eyebrow">SIMULADOR DE PLANIFICACIÓN</p><h1>Round <span>Robin</span></h1><p>Observa cómo una CPU reparte su tiempo entre tareas.</p></div><div class="badge">UNA CPU <span>●</span> QUANTUM 3 s</div></header>
+<main>
+  <section class="panel setup"><div class="section-title"><div><p class="eyebrow">01 / PREPARAR</p><h2>Tareas</h2></div><span class="muted">Llegada y duración en segundos</span></div>
+    <form id="generate-form" class="generate-form"><label>Cantidad de procesos<input id="process-count" type="number" min="1" max="100" step="1" value="3" required></label><button type="submit">Generar procesos</button><span class="hint">Reemplaza la lista actual con procesos de 8 a 12 segundos.</span></form>
+    <form id="task-form"><label>Nombre<input id="task-id" maxlength="24" placeholder="Ej. P1" required></label><label>Llegada<input id="arrival" type="number" min="0" step="1" value="0" required></label><label>Duración<input id="burst" type="number" min="1" step="1" value="10" required></label><button type="submit" class="primary">+ Agregar tarea</button></form>
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+    <div class="table-wrap"><table><thead><tr><th>Tarea</th><th>Llegada</th><th>Duración</th><th>Restante</th><th>Estado</th><th>Espera</th><th></th></tr></thead><tbody id="tasks"></tbody></table></div>
+    <p class="hint">Puedes modificar la lista antes de comenzar. Reinicia para volver a editarla.</p>
+  </section>
+  <section class="panel simulation"><div class="section-title"><div><p class="eyebrow">02 / SIMULAR</p><h2>Estado de la CPU</h2></div><div class="clock">TIEMPO <strong id="time">00</strong> s</div></div>
+    <div class="machine">
+      <div class="machine-heading"><span>● SISTEMA ACTIVO</span><span>PLANIFICADOR / RR-03</span></div>
+      <div class="orbit-layout">
+        <svg id="flow-lines" class="flow-lines" aria-hidden="true"></svg>
+        <div class="orbit" aria-label="Ciclo de planificación Round Robin">
+          <div class="orbit-track" aria-hidden="true"><span class="arrow arrow-one">▶</span><span class="arrow arrow-two">▶</span><span class="arrow arrow-three">▶</span><span class="arrow arrow-four">▶</span></div>
+          <span class="orbit-label orbit-top">DESPACHAR</span><span class="orbit-label orbit-bottom">REENCOLAR ↻</span>
+          <div class="cpu" id="cpu-box"><span class="chip-pin pin-top" aria-hidden="true"></span><span class="chip-pin pin-bottom" aria-hidden="true"></span><p class="eyebrow">PROCESADOR / CPU 01</p><strong id="cpu" aria-label="CPU en espera">...</strong><p id="quantum">Quantum: 0 / 3 s</p><div class="cpu-meter" aria-hidden="true"><i></i><i></i><i></i></div></div>
+        </div>
+        <div class="orbit-info">
+          <div class="queue-box" id="waiting-box"><p class="eyebrow">EN ESPERA / SIN CUPO</p><div id="waiting" class="queue"></div></div>
+          <div class="queue-box" id="ready-box"><p class="eyebrow">COLA DE LISTOS / MÁX. 3</p><div id="queue" class="queue"></div></div>
+          <div class="queue-box" id="blocked-box"><p class="eyebrow">BLOQUEADOS / 14 s</p><div id="blocked" class="queue"></div></div>
+          <div class="queue-box" id="finished-box"><p class="eyebrow">PROCESOS TERMINADOS</p><div id="finished" class="queue"></div></div>
+          <div class="status-box"><p class="eyebrow">ESTADO DEL CICLO</p><strong id="status">Lista para iniciar</strong><p id="last-action">Agrega tareas e inicia la simulación.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="controls"><button id="play" class="primary" type="button">▷ Ejecutar</button><button id="block" type="button">⏸ Bloquear CPU</button><button id="reset" type="button">↺ Reiniciar</button></div>
+    <p class="hint">La simulación avanza un segundo por segundo. Al terminar su turno, una tarea pendiente vuelve al final de la cola.</p>
+  </section>
+  <section class="panel history"><div class="section-title"><div><p class="eyebrow">03 / OBSERVAR</p><h2>Línea de tiempo</h2></div><span class="muted">Cada bloque representa un segundo</span></div><div id="timeline" class="timeline"></div><h3>Eventos recientes</h3><ol id="events" class="events"></ol></section>
+</main><footer>ROUND ROBIN · UNA CPU · QUANTUM FIJO DE 3 SEGUNDOS</footer>
+</body></html>
