@@ -2,13 +2,9 @@
 
 Proyecto para mostrar paso a paso cómo una sola CPU atiende tareas mediante el algoritmo Round Robin. La referencia visual está en `idea-desing.png`: una interfaz oscura con elementos de aspecto electrónico y acentos neón.
 
-## Alcance inicial
+## Simulación
 
-La primera etapa construye y verifica el motor de simulación en JavaScript para Node.js. La interfaz visual se desarrollará después, utilizando los estados y eventos que exponga el motor. El quantum inicial es de **3 unidades de tiempo**.
-
-Las tareas tienen un identificador, un tiempo de llegada y una duración de CPU. El motor mantiene una cola FIFO de tareas listas, ejecuta una tarea a la vez y devuelve al final de la cola las tareas que no terminaron al agotar su quantum. Debe representar también los periodos en los que la CPU está inactiva.
-
-Las instrucciones de uso y ejecución se completarán junto con el motor.
+La aplicación web utiliza un motor Round Robin para una CPU con quantum fijo de 3 segundos. La cola de listos admite tres procesos; el resto espera un lugar. Es posible bloquear el proceso en CPU durante 14 segundos de simulación.
 
 ## Uso del motor
 
@@ -45,3 +41,12 @@ La página incluye tareas de ejemplo con duraciones de 8, 10 y 12 segundos, que 
 La cola de listos admite hasta tres procesos. Los demás esperan su turno para entrar; el proceso que está en CPU no ocupa uno de esos tres lugares. El botón **Bloquear CPU** bloquea el proceso en ejecución por 14 segundos de simulación. Después pasa a listos si hay espacio o a la cola de espera si está llena. El tiempo de espera de las métricas excluye el tiempo bloqueado.
 
 Para crear varios procesos a la vez, indica una cantidad entre 1 y 100 y pulsa **Generar procesos**. Esta acción reemplaza la lista actual por procesos P1, P2, etc., con llegada en 0 y duraciones entre 8 y 12 segundos. Después puedes quitar procesos o agregar otros manualmente antes de ejecutar.
+
+## Desplegar en Vercel
+
+1. Guarda estos cambios en Git y súbelos al repositorio remoto.
+2. En Vercel, selecciona **Add New → Project**, importa el repositorio y elige la raíz del proyecto.
+3. Usa el framework **Other**. El archivo `vercel.json` configura `npm run build` y la carpeta de salida `dist`.
+4. Pulsa **Deploy**. No se necesitan variables de entorno ni servicios adicionales.
+
+La compilación copia únicamente los archivos necesarios para la aplicación a `dist/`; el servidor Node.js se utiliza solo para el desarrollo local. Puedes comprobar la generación con `npm run build` y el motor con `npm test`.
